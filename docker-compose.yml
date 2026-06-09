@@ -1,0 +1,76 @@
+version: '3.8'
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.14.0
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - plugins.security.desabled=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
+      - OPWNSEARCH_INITIAL_ADMIN_PASSWORD=MyLabPass123!
+    deploy:
+      resource:
+        limits:
+          cpus: '2.0'
+          memory: '4G'
+        reservations:
+          cpus: '1.0'
+          memory: '2G'
+    volumes:
+      - os_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - soc_net
+
+
+dashboards:
+  image: opensearchproject/opensearch-dashboards:2.14.0
+  container_name: dashboards
+  environment:
+    - OPENSEARCH_HOSTS=http://opensearch:9200
+  deploy:
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: '1G'
+      reservations:
+        cpus: '0.5'
+        memory: '512M'
+  ports:
+    - "5601:5601"
+  depends_on:
+    - opensearch
+  netwrks:
+    - soc_net
+
+
+logstash:
+  build:
+    context: .
+    dockerfile: Dockerfile.logstash
+  container_name: logstash
+  user: root
+  command: ["-f", "/usr/share/logstash/pipeline/logstash.conf"]
+  deploy:
+    resources:
+      limits:
+        cpus: '1.0'
+        memory: '1G'
+      reservation:
+        cpus: '0.5'
+        memory: '512M'
+  volumes:
+    - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    - /var/log:/var/log:ro
+  depends_on:
+    - opensearch
+  networks:
+    - soc_net
+
+
+networks:
+  soc_net:
+    driver: bridge
+volumes:
+  os_data:
